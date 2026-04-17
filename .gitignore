@@ -1,0 +1,53 @@
+# Python / Backend
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+*$py.class
+venv/
+.venv/
+.python-version
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+**/audit.db
+dump.rdb
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+.env*
+!.env.example
+coverage/
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+docs/*.pdf
+
+# Test assets & Metadata
+test_assets/
+automation/debug_screenshots/
+.pytest_cache/
+.coverage
+htmlcov/
+.antigravity/
+.gemini/
+
+# Clinical Data & Logs
+staging/
+MedParser_Audits/
+Med-Parser-Injections/
+**/*.log
+**/*.audit
+[Aa]udit/
+
+# OS Specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
