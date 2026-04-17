@@ -9,7 +9,6 @@ import { ClinicalOpsFeed } from './ClinicalOpsFeed';
 import { 
   Loader2Icon, 
   FileStackIcon, 
-  ArrowUpRightIcon,
   MousePointer2Icon
 } from 'lucide-react';
 
