@@ -40,7 +40,9 @@ async def lifespan(app: FastAPI):
         logger.critical(f"[STARTUP] Missing variables: {', '.join(missing)}")
         raise RuntimeError(f"Missing variables: {', '.join(missing)}")
 
-    logger.info(f"[STARTUP] {settings.GEMINI_MODEL_ID} Initialized.")
+    # Ensure database schema metadata or Alembic migrations are up to date
+    from prestart import init_db
+    init_db()
 
     workflow_service = WorkflowService(engine)
     app.state.workflow = workflow_service

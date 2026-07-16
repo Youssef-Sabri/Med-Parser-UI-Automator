@@ -7,13 +7,7 @@ from core.config import settings
 
 logger = logging.getLogger("BridgeService")
 
-# --- Circuit Breaker ---
-# Extrapolates RPA availability and prevents indefinite queuing.
-#
-# Thresholds (configurable via settings if needed):
-#   FAILURE_THRESHOLD   – consecutive failures before opening the circuit
-#   RESET_TIMEOUT_SEC   – seconds before attempting a probe from OPEN state
-
+# Circuit Breaker: prevents indefinite queuing when agent is down.
 FAILURE_THRESHOLD = 3
 RESET_TIMEOUT_SEC = 60.0
 

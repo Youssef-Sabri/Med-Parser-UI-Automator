@@ -1,10 +1,16 @@
-"""Database session management with SSL enforcement and standardized config."""
-
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from core.config import settings
+from core.config import settings, get_project_root
 
 DATABASE_URL = settings.DATABASE_URL
+if DATABASE_URL.startswith("sqlite:///") and not DATABASE_URL.startswith("sqlite:////") and not DATABASE_URL == "sqlite:///:memory:":
+    rel_path = DATABASE_URL.replace("sqlite:///", "")
+    root_dir = get_project_root()
+    db_file_path = (root_dir / rel_path).resolve()
+    db_file_path.parent.mkdir(parents=True, exist_ok=True)
+    abs_db_path = db_file_path.as_posix()
+    DATABASE_URL = f"sqlite:///{abs_db_path}"
 
 connect_args = {}
 engine_kwargs = {}

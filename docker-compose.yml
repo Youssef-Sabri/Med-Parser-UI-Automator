@@ -18,7 +18,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - staging_data:/app/staging
-      - med_parser_db:/app/med_parser.db
+      - med_parser_data:/app/data
 
   frontend:
     build:
@@ -39,4 +39,4 @@ services:
 
 volumes:
   staging_data:
-  med_parser_db:
+  med_parser_data:

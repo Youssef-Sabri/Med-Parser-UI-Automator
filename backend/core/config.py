@@ -3,6 +3,24 @@ from typing import List
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from cryptography.fernet import Fernet
+from dotenv import load_dotenv
+
+def get_project_root() -> Path:
+    current = Path(__file__).resolve().parent
+    for _ in range(4):
+        if (current / ".env").exists() or (current / "common").exists():
+            return current
+        if current.parent == current:
+            break
+        current = current.parent
+    return Path(__file__).resolve().parent.parent
+
+# Load root .env file into os.environ
+env_path = get_project_root() / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
+else:
+    load_dotenv()
 
 class Settings(BaseSettings):
     """System configuration."""

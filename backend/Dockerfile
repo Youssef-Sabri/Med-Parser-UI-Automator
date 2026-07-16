@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create staging directory with proper ownership for non-root user
-RUN mkdir -p /app/staging
+# Create staging and data directories with proper ownership for non-root user
+RUN mkdir -p /app/staging /app/data
 
 # Create non-root user and give it ownership of app directory
 RUN useradd -m appuser && chown -R appuser:appuser /app

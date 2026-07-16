@@ -35,9 +35,6 @@ class WorkflowService:
         if not db_engine:
             raise RuntimeError("WorkflowService started without a database engine.")
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
-        # Use asyncio.Semaphore for in-process concurrency control.
-        # Note: with multi-worker uvicorn, this is per-worker. For global
-        # concurrency control, use an external semaphore (e.g., Redis).
         self.semaphore = asyncio.Semaphore(settings.EXTRACTION_CONCURRENCY_LIMIT)
 
     def queue_new_case(self, extraction_id: str, filename: str, image_hash: str):
