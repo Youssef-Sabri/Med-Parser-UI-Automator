@@ -62,13 +62,14 @@ Prescription Fax
 - **Stateless Agent**: The Bridge Agent operates locally near the PMS, minimizing the exposure of sensitive data over the network.
 
 ### Production-Grade RPA Bridge Agent
-- **ScreenSeeker visual pipeline**: A robust 3-stage fallback discovery process to locate the target software:
+- **ScreenSeeker visual pipeline**: A robust 4-stage fallback discovery process to locate the target software:
   1. Active Window Name matching.
-  2. Desktop Icon visual search.
-  3. OS-level Start Menu search fallback.
+  2. Desktop Icon visual search (Gemini AI vision).
+  3. Taskbar visual search (Gemini AI vision).
+  4. OS-level Start Menu search fallback.
 - **Strict Focus Guarding**: Enforces strict window title verification to prevent PHI from being injected into the wrong application (Anti-Browser Shield).
 - **Per-Case Aborts**: Allows emergency aborts via global hotkey (`CTRL+SHIFT+Z`), immediately reverting the script to a "Ready" state on the dashboard for quick retries without interfering with parallel tasks.
-- **Authenticated Health Checks**: The agent's `/health` endpoint requires an `X-API-KEY` header.
+- **Public Health Check**: The agent's `/health` endpoint is unauthenticated for dashboard status polling.
 - **Zero-Fallback Config**: All system settings and specific PMS hotkeys MUST be configured in `.env`; the system intentionally drops hardcoded defaults to ensure strict behavior control.
 
 ---
