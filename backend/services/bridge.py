@@ -75,7 +75,7 @@ class BridgeService:
 
     def __init__(self):
         self.base_url = settings.BRIDGE_AGENT_URL.rstrip("/")
-        self.api_key = settings.MED_PARSER_API_KEY
+        self.api_key = settings.AGENT_API_KEY
 
     async def trigger_injection(self, extraction_id: str, clinical_data: Dict[str, Any]) -> bool:
         """Request UI injection."""
@@ -116,21 +116,3 @@ class BridgeService:
             logger.error(f"[Bridge] Unexpected error during trigger: {e}")
             _circuit_breaker.record_failure()
             return False
-
-    async def get_agent_health(self) -> str:
-        """Check agent reachability."""
-        url = f"{self.base_url}/health"
-        try:
-            res = await _shared_client.get(url, timeout=2.0)
-            if res.status_code == 200:
-                _circuit_breaker.record_success()
-                return "online"
-            return "unhealthy"
-        except Exception as e:
-            logger.warning(f"[Bridge] Health check failed: {e}")
-            return "offline"
-
-    @staticmethod
-    def circuit_breaker_state() -> str:
-        """Expose circuit breaker state."""
-        return _circuit_breaker._state

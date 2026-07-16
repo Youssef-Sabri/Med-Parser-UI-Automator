@@ -6,12 +6,19 @@ interface ExtractionConsoleProps {
   disabled?: boolean;
 }
 
+const MAX_FILE_SIZE_MB = 10;
+
 export const ExtractionConsole: React.FC<ExtractionConsoleProps> = ({ children, onUpload, disabled }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      onUpload(e.target.files[0]);
+      const file = e.target.files[0];
+      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+        alert(`File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`);
+        return;
+      }
+      onUpload(file);
     }
   };
 
@@ -22,7 +29,11 @@ export const ExtractionConsole: React.FC<ExtractionConsoleProps> = ({ children, 
     return () => window.removeEventListener('trigger-file-picker', handleTrigger);
   }, []);
 
-  const sessionId = React.useMemo(() => Math.random().toString(36).slice(2, 8).toUpperCase(), []);
+  const [sessionId] = React.useState(() => Math.random().toString(36).slice(2, 8).toUpperCase());
+
+  const sanitizeQuery = (value: string): string => {
+    return value.replace(/[<>"'&]/g, '').slice(0, 100);
+  };
 
   return (
     <div className="flex flex-col h-full bg-white rounded-3xl border border-clinical-border shadow-sm overflow-hidden">
@@ -43,7 +54,7 @@ export const ExtractionConsole: React.FC<ExtractionConsoleProps> = ({ children, 
             placeholder="Search patient or drug..."
             onChange={(e) => {
               window.dispatchEvent(new CustomEvent('ops-feed-search', { 
-                detail: { query: e.target.value } 
+                detail: { query: sanitizeQuery(e.target.value) } 
               }));
             }}
             className="pl-9 pr-4 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] focus:outline-none focus:ring-2 focus:ring-clinical-blue/20 focus:border-clinical-blue transition-all w-48 shadow-inner"

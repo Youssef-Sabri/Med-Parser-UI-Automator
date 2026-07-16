@@ -1,11 +1,5 @@
 import React from 'react';
 import {
-  UserIcon,
-  PillIcon,
-  ArrowRightIcon,
-  StethoscopeIcon,
-  CalendarIcon,
-  HashIcon,
   AlertCircleIcon,
   HistoryIcon
 } from 'lucide-react';

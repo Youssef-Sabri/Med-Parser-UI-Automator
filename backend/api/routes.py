@@ -2,8 +2,8 @@ from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException,
 from sqlalchemy.orm import Session
 from uuid import uuid4
 import logging
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from typing import Dict, Any, Optional
+from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse
 
 from core.config import settings
@@ -87,19 +87,19 @@ async def update_prescription(
         logger.error(f"Save error: {e}")
         raise HTTPException(status_code=500, detail="Persistence error")
 
+class PharmacistActionRequest(BaseModel):
+    action: str = Field(..., pattern=r"^(APPROVED|REJECTED)$")
+    note: Optional[str] = Field(default="", max_length=500)
+
 @router.post("/prescriptions/{id}/action")
 async def record_action(
-    id: str, payload: Dict[str, Any], db: Session = Depends(get_db), api_key: str = Depends(get_api_key)
+    id: str, payload: PharmacistActionRequest, db: Session = Depends(get_db), api_key: str = Depends(get_api_key)
 ):
     """Log final clinical decision."""
-    action = payload.get("action")
-    if action not in ["APPROVED", "REJECTED"]:
-        raise HTTPException(status_code=400, detail="Invalid action")
-        
     repo = AuditRepository(db)
-    repo.save_pharmacist_action(id, action, payload.get("note", ""))
+    repo.save_pharmacist_action(id, payload.action, payload.note)
     
-    if action == "REJECTED":
+    if payload.action == "REJECTED":
         from common.utils import secure_wipe
         for f in settings.staging_path.glob(f"{id}.*"): secure_wipe(f)
             
@@ -131,23 +131,24 @@ async def trigger_injection(
         
     return {"status": "SUCCESS"}
 
+class AutomationCallbackRequest(BaseModel):
+    id: str = Field(..., max_length=64)
+    status: str = Field(..., pattern=r"^(INJECTED|FAILED|PROCESSED)$")
+    note: Optional[str] = Field(default="", max_length=500)
+
 @router.post("/automation/callback")
 async def automation_callback(
-    payload: dict, db: Session = Depends(get_db), api_key: str = Depends(get_api_key)
+    payload: AutomationCallbackRequest, db: Session = Depends(get_db), api_key: str = Depends(get_api_key)
 ):
     """RPA callback handler."""
-    id, status = payload.get("id"), payload.get("status")
-    if not id or status not in [CaseStatus.INJECTED, CaseStatus.FAILED, CaseStatus.PROCESSED]:
-        raise HTTPException(status_code=400, detail="Invalid status")
-
     repo = AuditRepository(db)
-    repo.update_status(id, status)
-    repo.save_pharmacist_action(id, status, f"Bot: {payload.get('note', '')}")
+    repo.update_status(payload.id, payload.status)
+    repo.save_pharmacist_action(payload.id, payload.status, f"Bot: {payload.note}")
 
     # Success-only purge
-    if status == CaseStatus.INJECTED:
+    if payload.status == CaseStatus.INJECTED:
         from common.utils import secure_wipe
-        for f in settings.staging_path.glob(f"{id}.*"): secure_wipe(f)
+        for f in settings.staging_path.glob(f"{payload.id}.*"): secure_wipe(f)
 
     return {"status": "ok"}
 
@@ -181,6 +182,11 @@ async def retry_extraction(
     repo = AuditRepository(db)
     record = repo.get_extraction_by_id(id)
     if not record: raise HTTPException(status_code=404, detail="Record lost")
+
+    # Idempotency guard: only allow retry of terminal-failure states
+    current_status = repo.get_status(id)
+    if current_status not in ["FAILED", "PROCESSED", "REJECTED", "NOT_FOUND", "QUEUED", "PROCESSING"]:
+        raise HTTPException(status_code=409, detail=f"Cannot retry: status is {current_status}")
 
     matches = list(settings.staging_path.glob(f"{id}.*"))
     if not matches: raise HTTPException(status_code=410, detail="Image purged")

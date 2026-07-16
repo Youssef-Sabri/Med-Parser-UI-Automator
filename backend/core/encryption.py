@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Optional, Dict
+from typing import Any, Optional
 from cryptography.fernet import Fernet, InvalidToken
 from core.config import settings
 

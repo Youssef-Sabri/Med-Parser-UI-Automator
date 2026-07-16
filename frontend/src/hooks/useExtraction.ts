@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ExtractionResult, StatusType } from '../types';
 import {
   uploadFaxImage,
@@ -18,13 +18,10 @@ import {
 export const useExtraction = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<ExtractionResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  // Polling controller
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const processImage = useCallback(async (file: File) => {
-    // Cancel existing
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -34,7 +31,6 @@ export const useExtraction = () => {
 
     setIsProcessing(true);
     setResult(null);
-    setError(null);
 
     try {
       const uploadRes = await uploadFaxImage(file);
@@ -52,7 +48,6 @@ export const useExtraction = () => {
         } else if (statusRes.status === 'FAILED' || statusRes.status === 'REJECTED') {
           throw new Error('Extraction stopped: ' + statusRes.status);
         } else {
-          // Status backoff
           const delay = Math.min(2000 * Math.pow(STATUS_POLL_BACKOFF_FACTOR, attempts), 10000);
           await new Promise((resolve) => setTimeout(resolve, delay));
           attempts++;
@@ -70,21 +65,17 @@ export const useExtraction = () => {
     } catch (err: unknown) {
       if (currentAbort.signal.aborted) return;
 
-      // Load duplicate case
       if (err instanceof DuplicateUploadError && err.existing_id) {
         try {
           const existing = await getExtractionResult(err.existing_id);
           setResult(existing);
-          setError('⚠️ Duplicate upload — showing previously processed case.');
           return;
         } catch {
-          setError('Duplicate document detected, but the original case could not be loaded.');
           return;
         }
       }
 
-      const message = err instanceof Error ? err.message : 'An error occurred during extraction.';
-      setError(message);
+      console.error('Extraction failed:', err instanceof Error ? err.message : err);
     } finally {
       if (!currentAbort.signal.aborted) {
         setIsProcessing(false);
@@ -92,15 +83,12 @@ export const useExtraction = () => {
     }
   }, []);
 
-  // --- Load Result ---
-  const loadResult = useCallback((data: ExtractionResult) => {
-    // Check fields
-    if (!data.id || !data.data || !Array.isArray(data.flags)) {
-      setError('Invalid extraction result format');
-      return;
-    }
-    setError(null);
-    setResult(data);
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   const pollInjectionStatus = useCallback(async (id: string, onComplete: (status: StatusType) => void) => {
@@ -112,10 +100,9 @@ export const useExtraction = () => {
       try {
         const res = await getExtractionStatus(id);
         if (['INJECTED', 'FAILED', 'PROCESSED', 'REJECTED', 'DUPLICATE'].includes(res.status)) {
-          onComplete(res.status as StatusType); // Cast: API returns string, callback expects StatusType
+          onComplete(res.status as StatusType);
           isDone = true;
         } else {
-          // Injection backoff
           await new Promise(r => setTimeout(r, delay));
           delay = Math.min(delay * INJECTION_POLL_BACKOFF_FACTOR, INJECTION_POLL_MAX_DELAY_MS);
           attempts++;
@@ -133,8 +120,5 @@ export const useExtraction = () => {
     pollInjectionStatus,
     isProcessing,
     result,
-    error,
-    setResult: loadResult,
-    loadResult,
   };
 };

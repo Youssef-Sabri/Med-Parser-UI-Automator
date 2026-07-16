@@ -6,14 +6,14 @@ Professional Recursive Cascade for maximum precision.
 import io
 import json
 import logging
-import math
 import time
 import os
 import re
 import threading
-from typing import List, Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict
 from PIL import Image
 import google.generativeai as genai
+import pyautogui
 
 logger = logging.getLogger("ScreenSeekeR")
 
@@ -169,38 +169,37 @@ class ScreenSeeker:
 
 class DesktopSeeker:
     """Professional discovery wrapper."""
-    
+
     def __init__(self, key: str, model: str, timeout: int):
         self._seeker = ScreenSeeker(key, model, timeout)
 
     def find_on_taskbar(self, app_name: str, abort_event: Optional[threading.Event] = None) -> Optional[Tuple[int, int]]:
-        import pyautogui
+        """Find an application icon on the taskbar using AI vision."""
         lw, lh = pyautogui.size()
         img = pyautogui.screenshot()
         pw, ph = img.size
-        sx, sy = pw/lw, ph/lh
-        
-        taskbar_height = int(120 * sy) 
+        sx, sy = pw / lw, ph / lh
+
+        taskbar_height = int(120 * sy)
         taskbar_crop = img.crop((0, ph - taskbar_height, pw, ph))
-        
+
         res = self._seeker.search(f"{app_name} on the taskbar", taskbar_crop, abort_event=abort_event)
         if res:
-            tx, ty = int(res[0]/sx), int((ph - taskbar_height + res[1])/sy)
+            tx, ty = int(res[0] / sx), int((ph - taskbar_height + res[1]) / sy)
             return (tx, ty)
         return None
 
     def find_element(self, description: str, abort_event: Optional[threading.Event] = None) -> Optional[Tuple[int, int]]:
-        import pyautogui
+        """Find a UI element on the full desktop screenshot."""
         time.sleep(0.5)
         img = pyautogui.screenshot()
-        
+
         lw, lh = pyautogui.size()
         pw, ph = img.size
-        sx, sy = pw/lw, ph/lh
-        
+        sx, sy = pw / lw, ph / lh
+
         res = self._seeker.search(description, img, abort_event=abort_event)
         if res:
-            # If coordinates are global, res[0] and res[1] are pixel coords
-            tx, ty = int(res[0]/sx), int(res[1]/sy)
+            tx, ty = int(res[0] / sx), int(res[1] / sy)
             return (max(2, min(lw - 2, tx)), max(2, min(lh - 2, ty)))
         return None

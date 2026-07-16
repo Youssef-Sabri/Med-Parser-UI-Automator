@@ -42,17 +42,17 @@ async def lifespan(app: FastAPI):
 
     logger.info(f"[STARTUP] {settings.GEMINI_MODEL_ID} Initialized.")
 
+    workflow_service = WorkflowService(engine)
+    app.state.workflow = workflow_service
+
     try:
-        workflow_service = WorkflowService(engine)
-        app.state.workflow = workflow_service
-        
-        # Self-healing & Cleanup
+        # Self-healing & Cleanup (non-fatal)
         bg = BackgroundTasks()
         workflow_service.recover_interrupted_work(bg)
         bg.add_task(workflow_service.scrub_expired_phi, max_age_hours=24)
         await bg()
     except Exception as e:
-        logger.error(f"[STARTUP] Init error: {e}", exc_info=True)
+        logger.warning(f"[STARTUP] Recovery/cleanup skipped: {e}")
 
     yield
     logger.info("[SHUTDOWN] Cleanup.")
@@ -60,7 +60,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Med-Parser Backend API",
-    version="1.5.0",
+    version="2.0.0",
     description="Pharmacy automation API",
     lifespan=lifespan,
     docs_url="/api/docs" if settings.DEBUG else None,
@@ -118,15 +118,16 @@ app.include_router(api_router, prefix="/api/v1")
 async def health_check(request: Request):
     """Platform health check."""
     status = {"status": "healthy", "services": {"api": "up"}}
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         db.execute(text("SELECT 1"))
         status["services"]["database"] = "up"
-        db.close()
     except Exception as e:
         logger.error(f"[HEALTH] DB down: {e}")
         status.update({"status": "unhealthy", "services": {"database": "down"}})
         return JSONResponse(status_code=503, content=status)
+    finally:
+        db.close()
     return status
 
 if __name__ == "__main__":

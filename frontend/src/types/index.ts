@@ -45,3 +45,14 @@ export interface AuditLogEntry {
   created_at: string;
   status?: string;
 }
+
+export interface Stats {
+  scripts_today: number;
+  total_processed: number;
+  approval_rate: number;
+  blocking_count: number;
+  total_decisions: number;
+  total_records: number;
+  total_capacity: number;
+  daily_capacity: number;
+}

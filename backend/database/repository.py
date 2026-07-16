@@ -3,9 +3,8 @@
 import json
 import logging
 import hmac
-import hashlib
 from datetime import datetime, timedelta, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -24,14 +23,14 @@ class AuditRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def acquire_lock(self, id: str):
-        return self.db.query(Extraction).with_for_update().filter(Extraction.id == id).first()
-
     def _generate_semantic_hash(self, patient: str, drug: str, date: str) -> Optional[str]:
-        """HMAC-SHA256 clinical duplicate detection hash."""
+        """HMAC-SHA256 clinical duplicate detection hash using a derived key."""
         if not all([patient, drug, date]): return None
         msg = f"{patient.strip().lower()}|{drug.strip().lower()}|{date.strip()}".encode()
-        return hmac.new(settings.MED_PARSER_SECRET_KEY.encode(), msg, hashlib.sha256).hexdigest()
+        # Derive a dedicated HMAC key from the master Fernet key via HKDF-like construction
+        import hashlib as _hl
+        derived_key = _hl.sha256(b"med-parser-semantic-hmac-v1|" + settings.MED_PARSER_SECRET_KEY.encode()).digest()
+        return hmac.new(derived_key, msg, _hl.sha256).hexdigest()
 
     def save_extraction(self, res: ExtractionResult):
         """Encrypt and persist clinical data."""

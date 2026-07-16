@@ -1,6 +1,5 @@
-import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from cryptography.fernet import Fernet
@@ -65,6 +64,7 @@ class Settings(BaseSettings):
 
     # RPA Tuning
     PMS_TARGET_TITLE: str = Field(...)
+    AGENT_API_KEY: str = Field(...)
     TYPING_SPEED_MIN: float = Field(...)
     TYPING_SPEED_MAX: float = Field(...)
     ABORT_HOTKEY: str = Field(...)

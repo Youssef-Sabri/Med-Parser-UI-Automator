@@ -74,6 +74,13 @@ def preprocess_image(image_bytes: bytes) -> bytes:
         )
         logger.info(f"[Preprocessing] Deskewed by {angle:.2f} degrees.")
 
+    # CLAHE Adaptive Contrast Equalization for low-light/faded scans
+    try:
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        image = clahe.apply(image)
+    except Exception as e:
+        logger.debug(f"[Preprocessing] CLAHE skip: {e}")
+
     # Fast denoising
     denoised = cv2.medianBlur(image, 3)
     

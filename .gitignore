@@ -6,12 +6,12 @@
 venv/
 .venv/
 .python-version
+*.egg-info/
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
-**/audit.db
 dump.rdb
 
 # Node / Frontend
@@ -27,16 +27,18 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
-docs/*.pdf
+ehthumbs.db
+[Dd]esktop.ini
 
-# Test assets & Metadata
+# Docker (local overrides)
+docker-compose.override.yml
+
+# Test & Coverage
 test_assets/
 automation/debug_screenshots/
 .pytest_cache/
 .coverage
 htmlcov/
-.antigravity/
-.gemini/
 
 # Clinical Data & Logs
 staging/
@@ -46,8 +48,4 @@ Med-Parser-Injections/
 **/*.audit
 [Aa]udit/
 
-# OS Specific
-.DS_Store
-Thumbs.db
-ehthumbs.db
-[Dd]esktop.ini
+docs/

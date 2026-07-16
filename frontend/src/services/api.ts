@@ -1,4 +1,4 @@
-import type { AuditLogEntry, ExtractionResult, PrescriptionSchema } from '../types';
+import type { AuditLogEntry, ExtractionResult, PrescriptionSchema, Stats } from '../types';
 import {
   API_TIMEOUT_MS,
   MAX_RETRIES,
@@ -157,16 +157,7 @@ export const postPharmacistAction = async (
   return res.json();
 };
 
-export const getStats = async (): Promise<{
-  scripts_today: number;
-  total_processed: number;
-  approval_rate: number;
-  blocking_count: number;
-  total_decisions: number;
-  total_records: number;
-  total_capacity: number;
-  daily_capacity: number;  // UI gauge limit
-}> => {
+export const getStats = async (): Promise<Stats> => {
   const res = await fetchWithRetry(`${API_BASE}/stats`, {
     headers: getHeaders(),
   });
@@ -206,10 +197,15 @@ export const triggerInjection = async (id: string): Promise<{ status: string }> 
 export const getAgentHealth = async (): Promise<{ status: string }> => {
   // Health checks
   // Avoid browser caching
+  const agentBase = import.meta.env.VITE_AGENT_BASE_URL || 'http://localhost:8001';
+  const agentApiKey = import.meta.env.VITE_AGENT_API_KEY || '';
   try {
-    const res = await fetch(`http://localhost:8001/health?t=${Date.now()}`, {
+    const res = await fetch(`${agentBase}/health?t=${Date.now()}`, {
       method: 'GET',
-      headers: { 'Accept': 'application/json' }
+      headers: {
+        'Accept': 'application/json',
+        ...(agentApiKey ? { 'X-API-KEY': agentApiKey } : {}),
+      },
     });
     if (!res.ok) return { status: 'offline' };
     return res.json();
@@ -243,14 +239,4 @@ export const retryExtraction = async (id: string): Promise<{ id: string; status:
     throw new Error('Failed to re-trigger extraction');
   }
   return res.json();
-};
-
-/** Fetch prescription image blob. */
-export const getPrescriptionImage = async (id: string): Promise<string> => {
-  const res = await fetchWithRetry(`${API_BASE}/prescriptions/${id}/image`, {
-    headers: getHeaders(),
-  });
-  if (!res.ok) throw new Error('Image not found or already wiped.');
-  const blob = await res.blob();
-  return URL.createObjectURL(blob);
 };

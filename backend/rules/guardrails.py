@@ -219,7 +219,6 @@ def _check_dea_format(data: PrescriptionData) -> List[str]:
     """Check DEA Format (Compliance Rules)."""
     dea = data.prescriber_dea.value
     if dea and not dea.strip() == "":
-        import re
         if not re.match(r"^[A-Z]{2}[0-9]{7}$", dea.strip().upper()):
             return [f"BLOCKING: Invalid Prescriber DEA Format ({dea.strip()})"]
     return []

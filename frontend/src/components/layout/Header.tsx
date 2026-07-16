@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, UserCircle, CpuIcon, ServerIcon } from 'lucide-react';
+import { ShieldCheck, UserCircle } from 'lucide-react';
 import { getAgentHealth, getBackendHealth } from '../../services/api';
 
 export const Header: React.FC = () => {

@@ -1,38 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { ActivityIcon, BarChart3Icon, ShieldAlertIcon } from 'lucide-react';
-import { getStats } from '../../services/api';
-
-interface Stats {
-  scripts_today: number;
-  total_processed: number;
-  approval_rate: number;
-  blocking_count: number;
-  total_decisions: number;
-  total_records: number;
-  total_capacity: number;
-  daily_capacity: number;  // denominator for daily gauge
-}
+import { useStats } from '../../hooks/useStats';
 
 export const ClinicalStatsPanel: React.FC = () => {
-  const [stats, setStats] = useState<Stats | null>(null);
-
-  const fetchStats = React.useCallback(async () => {
-    try {
-      const data = await getStats();
-      // Guard: if backend hasn't been rebuilt yet, daily_capacity may be missing.
-      // Default to 200 (MAX_DAILY_CAPACITY default) so gauge shows a real % not NaN.
-      setStats({ ...data, daily_capacity: data.daily_capacity ?? 200 });
-
-    } catch (err) {
-      console.error('Failed to fetch stats', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchStats();
-    const interval = setInterval(fetchStats, 30000); // Poll every 30s
-    return () => clearInterval(interval);
-  }, []);
+  const stats = useStats();
 
   if (!stats) return null;
 

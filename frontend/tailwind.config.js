@@ -18,6 +18,7 @@ export default {
         'caution-amber': '#F59E0B',        // Warning
         'alert-crimson': '#EF4444',        // Critical
         'health-red': '#EF4444',           // Critical (alias for alert-crimson)
+        'health-green': '#10B981',         // Success green
       },
       fontFamily: {
         display: ['Outfit', 'sans-serif'],

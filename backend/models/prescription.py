@@ -1,5 +1,4 @@
-"""Pydantic models for prescription data extraction."""
-
+import re
 from datetime import datetime, timezone
 from typing import Optional
 import uuid
@@ -38,7 +37,6 @@ class PrescriptionData(BaseModel):
         """Ensure critical medical identifiers follow standard formats if present."""
         dea = self.prescriber_dea.value
         if dea and not dea.strip() == "":
-            import re
             dea_clean = dea.strip().upper()
             
             # Standard DEA format validation (2 letters, 7 digits)

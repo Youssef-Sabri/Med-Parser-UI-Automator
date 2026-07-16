@@ -20,7 +20,9 @@ services:
       - staging_data:/app/staging
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: medparser-frontend
     restart: unless-stopped
     ports:

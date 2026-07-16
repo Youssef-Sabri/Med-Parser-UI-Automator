@@ -25,7 +25,6 @@ export const AssistantDashboard: React.FC = () => {
     saveCorrection
   } = useExtractionManager();
 
-  const [isRateLimited, setIsRateLimited] = useState(false);
   const [injectionAlert, setInjectionAlert] = useState<string | null>(null);
   const [retryError, setRetryError] = useState<string | null>(null);
 
@@ -35,13 +34,6 @@ export const AssistantDashboard: React.FC = () => {
       trackExtraction(extractionResult);
     }
   }, [extractionResult, trackExtraction]);
-
-  // Rate limit warning banner
-  useEffect(() => {
-    const handleRateLimit = (e: any) => setIsRateLimited(e.detail?.active === true);
-    window.addEventListener('med-parser-rate-limit', handleRateLimit);
-    return () => window.removeEventListener('med-parser-rate-limit', handleRateLimit);
-  }, []);
 
   // Handle Workspace Management (Deselect/Remove/Focus)
   useEffect(() => {
@@ -82,14 +74,6 @@ export const AssistantDashboard: React.FC = () => {
 
   return (
     <AppLayout>
-      {isRateLimited && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top duration-300">
-          <div className="flex items-center space-x-3 px-5 py-2.5 bg-caution-amber text-white rounded-xl shadow-lg text-xs font-bold">
-            <span>⚠️ Rate limit reached — requests are being throttled. Please wait.</span>
-          </div>
-        </div>
-      )}
-
       {injectionAlert && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[250] animate-in zoom-in-95 fade-in duration-300">
           <div className="flex items-center justify-between p-4 bg-white border border-red-100 rounded-[20px] shadow-2xl shadow-red-500/10 min-w-[400px]">

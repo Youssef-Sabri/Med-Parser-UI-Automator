@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { 
-  History, 
   LayoutDashboard, 
   PlusCircle,
   DatabaseIcon
 } from 'lucide-react';
-import { getStats } from '../../services/api';
+import { useStats } from '../../hooks/useStats';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -17,6 +16,8 @@ interface NavItemProps {
 const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick }) => (
   <button 
     onClick={onClick}
+    aria-label={label}
+    aria-current={active ? 'page' : undefined}
     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
       active 
         ? 'bg-clinical-blue text-white shadow-lg shadow-clinical-blue/20' 
@@ -29,33 +30,16 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active, onClick }) => (
 );
 
 export const Sidebar: React.FC = () => {
-  const [stats, setStats] = useState<{ total_records: number; total_capacity: number } | null>(null);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const data = await getStats();
-        setStats({ total_records: data.total_records, total_capacity: data.total_capacity });
-      } catch (err) {
-        console.error('Sidebar stats fetch failed', err);
-      }
-    };
-    fetchStats();
-    const interval = setInterval(fetchStats, 60000); // Poll every minute
-    return () => clearInterval(interval);
-  }, []);
-
-  const scrollToAudit = () => {
-    window.dispatchEvent(new CustomEvent('switch-ops-feed-mode', { detail: { mode: 'HISTORY' } }));
-  };
+  const stats = useStats();
 
   const usagePercent = stats ? Math.min(Math.round((stats.total_records / stats.total_capacity) * 100), 100) : 0;
 
   return (
-    <aside className="w-64 bg-white border-r border-clinical-border flex flex-col h-full z-40">
+    <aside className="w-64 bg-white border-r border-clinical-border flex flex-col h-full z-40" aria-label="Sidebar navigation">
       <div className="p-6">
         <button 
           onClick={() => window.dispatchEvent(new CustomEvent('trigger-file-picker'))}
+          aria-label="Upload new prescription for extraction"
           className="w-full bg-clinical-blue text-white rounded-xl py-3.5 flex items-center justify-center space-x-2 font-bold shadow-lg shadow-clinical-blue/20 hover:bg-clinical-blue-hover active:scale-[0.98] transition-all"
         >
           <PlusCircle className="w-5 h-5" />
@@ -73,7 +57,7 @@ export const Sidebar: React.FC = () => {
             <DatabaseIcon className="w-3.5 h-3.5 text-clinical-blue" />
             <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider">Storage Node</span>
           </div>
-          <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden" role="progressbar" aria-valuenow={usagePercent} aria-valuemin={0} aria-valuemax={100} aria-label="Storage usage">
             <div 
               className="h-full bg-clinical-blue rounded-full transition-all duration-1000" 
               style={{ width: `${usagePercent}%` }} 

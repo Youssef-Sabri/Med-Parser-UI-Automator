@@ -15,9 +15,7 @@ import {
   DatabaseIcon,
   Loader2Icon
 } from 'lucide-react';
-import { postPharmacistAction } from '../../services/api';
 import { getStatusIcon, getStatusColorClasses, getStatusLabel } from '../../utils/statusPresentation';
-import { validateDEA, validateDate, validateDosage, validateQuantity, validateRefills } from '../../utils/validation';
 import type { ExtractionResult, PrescriptionSchema, StatusType, PharmacistAction } from '../../types';
 import { EditableField, SectionHeader, CDSSPanel } from './ExtractionSections';
 
@@ -41,9 +39,7 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<PrescriptionSchema>(data);
-  const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [uiError, setUiError] = useState<string | null>(null);
   const [isLocalRetrying, setIsLocalRetrying] = useState(false);
   const [showRawText, setShowRawText] = useState(false);
@@ -93,8 +89,6 @@ export const ExtractionCard: React.FC<ExtractionCardProps> = ({
     try {
       await onSaveCorrection(id, formData, flags);
       setIsEditing(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
     } catch (err) {
       setUiError('Failed to persist corrections.');
     } finally {

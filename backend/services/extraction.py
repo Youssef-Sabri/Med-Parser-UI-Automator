@@ -2,9 +2,6 @@
 
 import json
 import logging
-import re
-import base64
-from typing import Optional
 from pathlib import Path
 
 import google.generativeai as genai
@@ -15,18 +12,16 @@ from models.prescription import (
     ExtractionResult,
     PROMPT_VERSION_VISION,
 )
-from common.utils import strip_markdown
+from common.utils import strip_markdown, parse_safe_int
 from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Single initialization for Gemini API efficiency
 if settings.GEMINI_API_KEY:
     genai.configure(api_key=settings.GEMINI_API_KEY, transport="rest")
 else:
     logger.warning("GEMINI_API_KEY not found during extraction service initialization.")
 
-# Document MIME types
 MIME_REGISTRY = {
     ".png":  "image/png",
     ".jpg":  "image/jpeg",
@@ -34,17 +29,6 @@ MIME_REGISTRY = {
     ".tiff": "image/tiff",
     ".pdf":  "application/pdf",
 }
-
-# --- Session State ---
-_primary_unavailable = False
-
-def reset_extraction_session():
-    """Reset the sticky fallback state for a new patient/request."""
-    global _primary_unavailable
-    _primary_unavailable = False
-    logger.info("[AI] Primary extraction session reset. Will attempt Gemini for next page.")
-
-# --- AI Extraction ---
 
 AI_EXTRACTION_PROMPT = """
 You are a pharmacy prescription data extractor. 
@@ -70,12 +54,6 @@ Rules:
 2. Expand SIG (e.g., TID -> Three times daily).
 3. If missing, use null/0.
 """.strip()
-
-def apply_rxnorm_normalization(data: PrescriptionData) -> PrescriptionData:
-    """Drug name normalization (Placeholder for external service)."""
-    # DEPRECATED: Hardcoded RXNORM_MAP removed in audit cleanup.
-    # Future implementation should call a proper medical nomenclature service.
-    return data
 
 
 def extract_with_gemini(image_bytes: bytes, filename: str) -> ExtractionResult:
@@ -124,15 +102,13 @@ def extract_with_gemini(image_bytes: bytes, filename: str) -> ExtractionResult:
 
     try:
         parsed = json.loads(strip_markdown(text_content.strip()))
-    except (json.JSONDecodeError, re.error) as e:
+    except json.JSONDecodeError as e:
         logger.error(f"[AI] Gemini parse error: {e}")
         raise ValueError(f"Gemini response parsing failed: {e}") from e
 
-
-    # Map raw JSON fields → FieldExtraction models
     def _to_field_model(field_data: dict) -> FieldExtraction:
         val = field_data.get("value")
-        conf = int(field_data.get("confidence", 50))
+        conf = parse_safe_int(field_data.get("confidence"), default=50)
         reason = "Extracted via AI" if val else "Field not detected"
         return FieldExtraction(value=val, confidence=conf, reason=reason)
 
@@ -141,9 +117,7 @@ def extract_with_gemini(image_bytes: bytes, filename: str) -> ExtractionResult:
         key: _to_field_model(parsed.get(key, {})) for key in field_keys
     }
 
-
     prescription = PrescriptionData(**prescription_fields)
-    prescription = apply_rxnorm_normalization(prescription)
 
     return ExtractionResult(
         filename=filename,
@@ -153,11 +127,12 @@ def extract_with_gemini(image_bytes: bytes, filename: str) -> ExtractionResult:
     )
 
 
-
-
 def extract_prescription(image_bytes: bytes, filename: str) -> ExtractionResult:
     """Extract prescription via AI (Gemini)."""
-    # Simply call Gemini primary. 
-    # Failures will propagate to the workflow service as CaseStatus.FAILED.
     logger.info("[AI] Attempting Gemini extraction...")
     return extract_with_gemini(image_bytes, filename)
+
+
+def reset_extraction_session():
+    """Reset any per-session state before a new extraction run."""
+    logger.debug("[AI] Extraction session reset.")

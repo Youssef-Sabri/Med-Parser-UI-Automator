@@ -9,7 +9,6 @@ from pathlib import Path
 from sqlalchemy.orm import sessionmaker
 
 from core.config import settings
-from core.encryption import decrypt_phi
 from models.prescription import ExtractionResult, PROMPT_VERSION_VISION, PrescriptionData
 from services.extraction import extract_prescription, reset_extraction_session
 from services.preprocessing import preprocess_image, get_image_frames
@@ -36,6 +35,9 @@ class WorkflowService:
         if not db_engine:
             raise RuntimeError("WorkflowService started without a database engine.")
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+        # Use asyncio.Semaphore for in-process concurrency control.
+        # Note: with multi-worker uvicorn, this is per-worker. For global
+        # concurrency control, use an external semaphore (e.g., Redis).
         self.semaphore = asyncio.Semaphore(settings.EXTRACTION_CONCURRENCY_LIMIT)
 
     def queue_new_case(self, extraction_id: str, filename: str, image_hash: str):
@@ -93,14 +95,20 @@ class WorkflowService:
                 logger.info(f"[√] Pipeline finalized: {extraction_id}")
             except Exception as e:
                 logger.error(f"[X] Pipeline failed: {extraction_id} | {e}")
-                repo.update_status(extraction_id, CaseStatus.FAILED)
+                # Always mark as FAILED on pipeline-level crash
+                try:
+                    repo.update_status(extraction_id, CaseStatus.FAILED)
+                except Exception as db_err:
+                    logger.error(f"[X] Failed to update status to FAILED: {db_err}")
 
     async def _process_single_frame(self, index: int, frame_bytes: bytes, filename: str, ctx: dict):
         """Preprocess, Extract, and Audit single frame with concurrency control."""
         async with self.semaphore:
-            with self.SessionLocal() as db:
-                repo = AuditRepository(db)
+            target_id = ctx["extraction_id"]
             try:
+                with self.SessionLocal() as db:
+                    repo = AuditRepository(db)
+
                 # 1. Vision Extraction
                 clean = preprocess_image(frame_bytes)
                 loop = asyncio.get_running_loop()
@@ -129,13 +137,17 @@ class WorkflowService:
                 logger.info(f" -> Frame {index+1} -> Case {target_id}")
             except Exception as err:
                 logger.error(f" -> Frame {index+1} crash: {err}")
-                raise err
+                # Mark this specific case as FAILED
+                try:
+                    with self.SessionLocal() as db:
+                        AuditRepository(db).update_status(target_id, CaseStatus.FAILED)
+                except Exception as db_err:
+                    logger.error(f" -> Frame {index+1} failed to mark FAILED: {db_err}")
 
     def _determine_case_id(self, identity: tuple, ctx: dict, filename: str, idx: int, repo: AuditRepository) -> str:
         """Handle multi-patient document splitting."""
         cases = ctx["patient_cases"]
         primary = ctx["extraction_id"]
-        repo.acquire_lock(primary)
 
         if not cases:
             cases[identity] = primary
